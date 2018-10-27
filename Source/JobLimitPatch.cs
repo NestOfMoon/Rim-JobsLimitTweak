@@ -43,7 +43,6 @@ namespace NestOfMoon.JobsLimitTweak.Standalone
             jobsLimitHandle = Settings.GetHandle<int>("JobsLimitField", "JobsLimit", "How many jobs a Pawn can start per TicksLimit. Recomended is 40, minimum is 5, recomended maximum is 127, the theoretical maximum is 2147483647", 40);
             ticksLimitHandle = Settings.GetHandle<int>("TicksLimitField", "TicksLimit", "It's just here. This is how many ticks will pass before resetting JobsLimit count. Minimum is 5, recomended is 10, recomended maximum is 127, the theoretical maximum is 2147483647", 10);
             proModeHandle = Settings.GetHandle<bool>("ProModeField", "ProMode", "Removing logical limitters on all fields. Use with caution.", false);
-            
 
             Patch();
         }
@@ -52,7 +51,6 @@ namespace NestOfMoon.JobsLimitTweak.Standalone
 
         public void Patch()
         {
-
             jobLim =  jobsLimitHandle.Value;
             tickLim = ticksLimitHandle.Value;
 
@@ -63,7 +61,6 @@ namespace NestOfMoon.JobsLimitTweak.Standalone
                 jobLim = Math.Max(jobLim, 5);
                 tickLim = Math.Max(tickLim, 5);
             }
-
 
             if (harmony == null)
                 harmony = HarmonyInstance.Create("com.github.harmony.rimworld.nestofmoon.jobslimittweak");
@@ -78,16 +75,15 @@ namespace NestOfMoon.JobsLimitTweak.Standalone
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             var ils = instructions.ToArray();
-            
 
             // Ticks.
             // Original IL is at index 22, and instruction is 'Ldc.i4.s 10'
-            if(ils[22].ModifyLdci4(Mod.tickLim) == 0)
+            if(ils[22].ModifyLdci4(Mod.tickLim) != 0)
                 Mod.log.Warning("Mod is outdated. If this is the only 'warning' then mod can be used. Details: Failed to transpile Pawn_JobTracker, FinalizeTick, at il 22, TicksLimit");
 
             // Jobs.
             // Original IL is at index 49, and instruction is 'Ldc.i4.s 10'
-            if (ils[49].ModifyLdci4(Mod.jobLim) == 0)
+            if (ils[49].ModifyLdci4(Mod.jobLim) != 0)
                 Mod.log.Warning("Mod is outdated. Details: Failed to transpile Pawn_JobTracker, FinalizeTick, at il 49, JobsLimit");
 
             return ils;
@@ -100,28 +96,29 @@ namespace NestOfMoon.JobsLimitTweak.Standalone
             if (il == null) return 2;
             
             // Check if opcodes types does match to SByte or Int32.
-            if (il.opcode == OpCodes.Ldc_I4_S || il.opcode == OpCodes.Ldc_I4) 
+            if (il.opcode != OpCodes.Ldc_I4_S && il.opcode != OpCodes.Ldc_I4)
+                // Report IL type mismatch.
+                return 1;
+
+            // Check if val is different, otherwise do nothing.
+            if (val != il.operand.ChangeType<int>())
             {
-                // Check if val is different, otherwise do nothing.
-                if (val != il.operand.ChangeType<int>())
+                // If val is in range of SignByte.
+                if (val <= sbyte.MaxValue)
                 {
-                    // If val is in range of SignByte.
-                    if (val <= sbyte.MaxValue)
-                    {
-                        il.opcode = OpCodes.Ldc_I4_S;
-                        il.operand = (SByte)val;
-                    }
-                    // Otherwise write it as Int32
-                    else
-                    {
-                        il.opcode = OpCodes.Ldc_I4;
-                        il.operand = (Int32)val;
-                    }
+                    il.opcode = OpCodes.Ldc_I4_S;
+                    il.operand = (SByte)val;
                 }
-                
-                return 0;
+                // Otherwise write it as Int32
+                else
+                {
+                    il.opcode = OpCodes.Ldc_I4;
+                    il.operand = (Int32)val;
+                }
             }
-            else return 1;
+
+            // Report no errors.
+            return 0;
         }
 
     }
