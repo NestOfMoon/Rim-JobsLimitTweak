@@ -16,6 +16,8 @@ bld/
 [Oo]bj/
 [Ll]og/
 
+
+
 .vs/
 
 Generated\ Files/
@@ -25,3 +27,4 @@ Generated\ Files/
 
 *.dll
 
+packages/
