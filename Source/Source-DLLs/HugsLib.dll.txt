@@ -1,3 +1,0 @@
-Copy dll from steam mods
-You can find it here:
-...\Steam\steamapps\workshop\content\294100\818773962\Assemblies
